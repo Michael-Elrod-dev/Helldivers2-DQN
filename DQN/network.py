@@ -10,7 +10,7 @@ from collections import namedtuple, deque
 
 
 BUFFER_SIZE = int(1e5)  # replay buffer size
-BATCH_SIZE = 10         # minibatch size
+BATCH_SIZE = 100         # minibatch size
 TAU = 1e-3              # for soft update of target parameters
 LR = 5e-4               # learning rate 
 UPDATE_EVERY = 2        # how often to update the network
@@ -65,7 +65,7 @@ class Network():
             outputs = self.network_local(image)
         self.network_local.train()
 
-        # Epsilon-greedy class selection
+        # Epsilon-greedy label selection
         if random.random() > eps:
             predicted_label = np.argmax(outputs.cpu().data.numpy())
         else:

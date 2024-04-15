@@ -24,5 +24,10 @@ class Logger:
             "Priority Beta": prio_b
         })
 
+    def log_test_metrics(self, accuracy):
+        wandb.log({
+            "Test Accuracy": accuracy
+        })
+
     def close(self):
         wandb.finish()
