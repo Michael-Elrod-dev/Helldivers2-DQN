@@ -85,10 +85,4 @@ def separate(image):
     # Store the separated images after sorting
     separated_images = [img for _, img in bounding_boxes_with_images]
 
-    # Show each separated image
-    for idx, img in enumerate(separated_images):
-        cv2.imshow(f'Item {idx+1}', img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
     return separated_images

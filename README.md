@@ -22,11 +22,14 @@ To run this project, you need the following dependencies:
 - NumPy
 - OpenCV (cv2)
 - Weights and Biases (wandb)
+- PyAutoGUI
+- Screen Info
+- Keyboard (Optional for getting training data)
 
 You can install the required packages using pip:
 
 ```
-pip install torch numpy opencv-python wandb
+pip install torch numpy opencv-python wandb pyautogui screeninfo
 ```
 
 ## Usage
