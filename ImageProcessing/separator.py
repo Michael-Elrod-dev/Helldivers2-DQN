@@ -1,6 +1,7 @@
 def crop_area(image_path):
     import cv2
     import numpy as np
+    import random
 
     # Load the image
     image = cv2.imread(image_path)
@@ -58,6 +59,7 @@ def separate(image):
 
     import cv2
     import numpy as np
+    import random
 
     # Convert image to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
