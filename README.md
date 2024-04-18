@@ -25,11 +25,12 @@ To run this project, you need the following dependencies:
 - PyAutoGUI
 - Screen Info
 - Keyboard (Optional for getting training data)
+- Pillow
 
 You can install the required packages using pip:
 
 ```
-pip install torch numpy opencv-python wandb pyautogui screeninfo
+pip install torch numpy opencv-python wandb pyautogui screeninfo pillow
 ```
 
 ## Usage

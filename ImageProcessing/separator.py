@@ -1,7 +1,11 @@
+import cv2
+import numpy as np
+import random
+import pillow
+from PIL import Image
+
+
 def crop_area(image_path):
-    import cv2
-    import numpy as np
-    import random
 
     # Load the image
     image = cv2.imread(image_path)
@@ -57,9 +61,7 @@ def crop_area(image_path):
 
 def separate(image):
 
-    import cv2
-    import numpy as np
-    import random
+    
 
     # Convert image to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -88,3 +90,11 @@ def separate(image):
     separated_images = [img for _, img in bounding_boxes_with_images]
 
     return separated_images
+
+def resize(location, outputpath):
+    # Open an image file
+    with Image.open(location) as img:
+        # Resize the image
+        img = img.resize((80, 80), Image.ANTIALIAS)
+        # Save it back to disk
+        img.save(outputpath, format='PNG')
