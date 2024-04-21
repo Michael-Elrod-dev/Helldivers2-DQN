@@ -1,0 +1,53 @@
+{
+    "os": "Windows-11-10.0.22631-SP0",
+    "python": "3.12.2",
+    "heartbeatAt": "2024-04-20T23:51:34.430091",
+    "startedAt": "2024-04-20T23:51:32.722188",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "C:\\Users\\elrod\\OneDrive\\Code\\Helldivers2-DQN\\main.py",
+    "codePathLocal": "main.py",
+    "codePath": "main.py",
+    "git": {
+        "remote": "https://github.com/Michael-Elrod-dev/Helldivers2-DQN.git",
+        "commit": "31d0b875169281832970623aa5bcc73869126402"
+    },
+    "email": "michaelelrod.dev@gmail.com",
+    "root": "C:/Users/elrod/OneDrive/Code/Helldivers2-DQN",
+    "host": "Michaels-Desktop",
+    "username": "elrod",
+    "executable": "C:\\Users\\elrod\\anaconda3\\envs\\Helldivers2\\python.exe",
+    "cpu_count": 8,
+    "cpu_count_logical": 16,
+    "cpu_freq": {
+        "current": 3600.0,
+        "min": 0.0,
+        "max": 3600.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 3600.0,
+            "min": 0.0,
+            "max": 3600.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 930.2750434875488,
+            "used": 850.7967720031738
+        }
+    },
+    "gpu": "NVIDIA GeForce RTX 4070 SUPER",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 4070 SUPER",
+            "memory_total": 12878610432
+        }
+    ],
+    "memory": {
+        "total": 63.91176223754883
+    }
+}

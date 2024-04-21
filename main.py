@@ -1,16 +1,17 @@
 import torch
 import numpy as np
 
+from args import Args
 from logger import Logger
 from collections import deque
-from DQN.model import Model
-from utils import get_random_image, preprocess_image, calculate_eps_decay
+from DQN.network import Network
+from utils import get_random_image, preprocess_image
 
 
-def test(model, logger):
+def test(args, network, logger):
     # Load the policy file
-    model.network_local.load_state_dict(torch.load('checkpoint.pth'))
-    model.network_local.eval()
+    network.network_local.load_state_dict(torch.load('checkpoint.pth'))
+    network.network_local.eval()
 
     num_test_images = 0
     correct_predictions = 0
@@ -23,37 +24,40 @@ def test(model, logger):
         processed_image = preprocess_image(image)
 
         # Send the image to the network for prediction
-        predicted_label = model.predict(processed_image)
+        predicted_label = network.predict(processed_image)
 
         if predicted_label == true_label:
             correct_predictions += 1
 
     accuracy = correct_predictions / num_test_images
     print(f'Test Accuracy: {accuracy:.2f}')
-    logger.log_test_metrics(accuracy)
+    if logger: logger.log_test_metrics(accuracy)
 
-def train(model, logger, max_steps, eps_start, eps_end, eps_decay):
-    eps = eps_start
+def train(args, network, logger):
+    eps = args.eps_start
     correct_predictions = 0
     total_loss = 0
     total_accuracy = 0
     total_magnitude = 0
     recent_accuracy = deque(maxlen=50)
 
-    for step in range(1, max_steps + 1):
+    torch.set_printoptions(threshold=10_000)
+    for step in range(1, args.max_steps + 1):
         # Get an image and its label at random
-        image, true_label = get_random_image()
-
+        image, true_label = get_random_image(args.image_dir)
+        # print(image, true_label)
+        
         # Preprocess the image
-        processed_image = preprocess_image(image)
+        processed_image = preprocess_image(image, args.image_w, args.image_h)
+        print(processed_image.shape)
 
-        model.update_beta((step - 1) / (max_steps - 1))
+        network.update_beta((step - 1) / (args.max_steps - 1))
 
         # Send the image to the network
-        predicted_label = model.predict(processed_image, eps)
+        predicted_label = network.predict(processed_image, eps)
 
         # Train the network and record metrics
-        loss, accuracy, magnitude, lr = model.step(processed_image, true_label)
+        loss, accuracy, magnitude, lr = network.step(processed_image, true_label)
 
         total_loss += loss
         total_accuracy += accuracy
@@ -61,51 +65,46 @@ def train(model, logger, max_steps, eps_start, eps_end, eps_decay):
         if predicted_label == true_label:
             correct_predictions += 1
 
-        if eps > eps_end: eps -= eps_decay
-        else: eps = eps_end
+        if eps > args.eps_end: eps -= args.eps_decay
+        else: eps = args.eps_end
 
-        if step % model.BATCH_SIZE == 0:
-            batch_accuracy = correct_predictions / model.BATCH_SIZE
+        if step % args.BATCH_SIZE == 0:
+            batch_accuracy = correct_predictions / args.BATCH_SIZE
             recent_accuracy.append(batch_accuracy)
             avg_accuracy = np.mean(recent_accuracy)
-            avg_loss = total_loss / model.BATCH_SIZE
-            avg_magnitude = total_magnitude / model.BATCH_SIZE
+            avg_loss = total_loss / args.BATCH_SIZE
+            avg_magnitude = total_magnitude / args.BATCH_SIZE
 
-            logger.log_metrics(step, eps, avg_accuracy, avg_loss, avg_magnitude, lr, model.prio_a, model.prio_b)
+            if logger: logger.log_metrics(step, eps, avg_accuracy, avg_loss, avg_magnitude, lr, args.prio_a, args.prio_b)
             
             print(f'\rStep: {step}\tEpsilon: {eps:.2f}\tBatch Accuracy: {batch_accuracy:.2f}\tAvg. Accuracy: {avg_accuracy:.2f}\tAvg. Loss: {avg_loss:.4f}\tAvg. Gradient Magnitude: {avg_magnitude:.4f}\tLearning Rate: {lr:.6f}', end='')
-            if step % (model.BATCH_SIZE * 100) == 0:
+            if step % (args.BATCH_SIZE * 100) == 0:
                 print(f'\rStep: {step}\tEpsilon: {eps:.2f}\tBatch Accuracy: {batch_accuracy:.2f}\tAvg. Accuracy: {avg_accuracy:.2f}\tAvg. Loss: {avg_loss:.4f}\tAvg. Gradient Magnitude: {avg_magnitude:.4f}\tLearning Rate: {lr:.6f}')
-                torch.save(model.network_local.state_dict(), 'checkpoint.pth')
+                torch.save(args.network_local.state_dict(), 'checkpoint.pth')
 
             correct_predictions = 0
             total_loss = 0
             total_accuracy = 0
             total_magnitude = 0
 
-    torch.save(model.network_local.state_dict(), 'checkpoint.pth')
+    torch.save(network.network_local.state_dict(), 'checkpoint.pth')
     return recent_accuracy
 
 def main():
-    load_policy = False
-    max_steps = 1000000
-    num_labels = 4
-    eps_start = 1.0
-    eps_end = 0.01
-    eps_percentage = 0.98
-    eps_decay = calculate_eps_decay(eps_start, eps_end, max_steps, eps_percentage)
-    seed = 0
-    priority_replay = [0.5, 0.5, 0.5]
+    args = Args()
     
-    image_size = 0
-    model = Model(image_size, num_labels, seed, priority_replay)
-    logger = Logger(image_size, num_labels, eps_start, eps_end, eps_decay, max_steps)
-    if not load_policy:
-        _ = train(model, logger, max_steps, eps_start, eps_end, eps_decay)
-    if load_policy:
-        _ = test(model, logger)
+    network = Network(args)
+    if args.wandb: 
+        logger = Logger(args)
+    else: 
+        logger = None
 
-    logger.close()
+    if not args.load_policy:
+        _ = train(args, network, logger)
+    if args.load_policy:
+        _ = test(args, network, logger)
+
+    if args.wandb: logger.close()
 
 if __name__ == '__main__':
     main()

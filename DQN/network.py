@@ -5,42 +5,36 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from model import Model
+from DQN.model import Model
 from collections import namedtuple, deque
-
-
-BUFFER_SIZE = int(1e5)  # replay buffer size
-BATCH_SIZE = 100         # minibatch size
-TAU = 1e-3              # for soft update of target parameters
-LR = 5e-4               # learning rate 
-UPDATE_EVERY = 2        # how often to update the network
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 random.seed(time.time_ns())
 
 class Network():
-    def __init__(self, num_labels, seed, priority_replay=False):
-        self.num_labels = num_labels
-        self.seed = random.seed(seed)
-        self.BUFFER_SIZE = BUFFER_SIZE
-        self.BATCH_SIZE = BATCH_SIZE
-        self.TAU = TAU
-        self.LR =LR
-        self.UPDATE_EVERY = UPDATE_EVERY
-        self.priority_replay = priority_replay
+    def __init__(self, args):
+        self.args = args
+        self.num_labels = args.num_labels
+        self.seed = random.seed(args.seed)
+        self.BUFFER_SIZE = args.BUFFER_SIZE
+        self.BATCH_SIZE = args.BATCH_SIZE
+        self.TAU = args.TAU
+        self.LR = args.LR
+        self.UPDATE_EVERY = args.UPDATE_EVERY
+        self.priority_replay = args.priority_replay
 
         if self.priority_replay:
-            self.prio_e, self.prio_a, self.prio_b = priority_replay
+            self.prio_e, self.prio_a, self.prio_b = args.priority_replay
         else:
             self.prio_e, self.prio_a, self.prio_b = None, None, None
 
         # Q-Network
-        self.network_local = Model(num_labels).to(device)
-        self.network_target = Model(num_labels).to(device)
-        self.optimizer = optim.Adam(self.network_local.parameters(), lr=LR)
+        self.network_local = Model(args.num_labels).to(device)
+        self.network_target = Model(args.num_labels).to(device)
+        self.optimizer = optim.Adam(self.network_local.parameters(), lr=self.LR)
 
         # Replay memory
-        self.memory = ReplayBuffer(num_labels, BUFFER_SIZE, BATCH_SIZE, seed, self.priority_replay)
+        self.memory = ReplayBuffer(args.num_labels, args.BUFFER_SIZE, args.BATCH_SIZE, args.seed, self.priority_replay)
         self.t_step = 0
     
     def step(self, image, label):
@@ -48,7 +42,7 @@ class Network():
         self.memory.add(image, label)
         
         # Learn every UPDATE_EVERY time steps
-        self.t_step = (self.t_step + 1) % UPDATE_EVERY
+        self.t_step = (self.t_step + 1) % self.UPDATE_EVERY
         if self.t_step == 0:
             # If enough samples are available in memory, get random subset and learn
             if len(self.memory) > self.BATCH_SIZE:
@@ -108,7 +102,7 @@ class Network():
             self.memory.update_priorities(experience_indexes, target_priorities)
 
         # Update target network
-        self.soft_update(self.network_local, self.network_target, TAU)
+        self.soft_update(self.network_local, self.network_target, self.TAU)
 
         # Compute accuracy
         _, predicted_labels = torch.max(outputs, 1)

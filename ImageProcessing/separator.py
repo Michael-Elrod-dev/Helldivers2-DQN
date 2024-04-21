@@ -1,7 +1,5 @@
 import cv2
 import numpy as np
-import random
-import pillow
 from PIL import Image
 
 
