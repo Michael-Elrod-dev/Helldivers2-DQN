@@ -13,11 +13,9 @@ class Logger:
             "max_steps": args.max_steps,
         })
 
-    def log_metrics(self, step, eps, reward, avg_score):
+    def log_metrics(self, eps, avg_score):
         wandb.log({
-            "Step": step,
             "Epsilon": eps,
-            "Reward": reward,
             "Average Score": avg_score
         })
 

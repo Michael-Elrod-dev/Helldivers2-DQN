@@ -1,1 +1,1 @@
-{"Step": 117100, "Epsilon": 0.408530561225656, "Reward": 5, "Average Score": 2.9, "_timestamp": 1713750013.0777934, "_runtime": 1294.1453232765198, "_step": 1170}
+{"Step": 200000, "Epsilon": 0.01, "Reward": 5, "Average Score": 4.1, "_timestamp": 1713751421.4787042, "_runtime": 2702.5462341308594, "_step": 1999, "_wandb": {"runtime": 2701}}

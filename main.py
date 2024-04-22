@@ -2,14 +2,14 @@ import torch
 import numpy as np
 from args import Args
 from logger import Logger
-from dqn_agent import Agent
+from network import Network
 from collections import deque
-from utils import get_random_image, preprocess_image, env_step, rename_file
+from utils import get_random_image, preprocess_image, env_step, move_file
 
 
 def test_dqn(args, logger):
-    network = Agent(args)
-    network.qnetwork_local.load_state_dict(torch.load('learned_policy.pth'))
+    network = Network(args)
+    network.qnetwork_local.load_state_dict(torch.load(args.policy_file))
 
     scores_window = deque(maxlen=100)
     scores = []
@@ -25,12 +25,12 @@ def test_dqn(args, logger):
         processed_image = torch.flatten(processed_image)
         
         predicted_label = network.act(processed_image, eps)
-        next_image, reward, done = env_step(predicted_label, true_label, processed_image)
+        next_image, reward, done = env_step(args, predicted_label, true_label, processed_image)
         
         scores_window.append(reward)
         scores.append(reward)
         
-        print('Step: {}\tScore: {:.2f}\tAverage Score: {:.2f}'.format(step, reward, np.mean(scores_window)))
+        print('Step: {}\tScore: {:.1f}\tAverage Score: {:.2f}'.format(step, reward, np.mean(scores_window)))
 
     # Calculate correct and incorrect predictions
     correct = scores.count(5)
@@ -43,8 +43,9 @@ def test_dqn(args, logger):
     return scores
 
 def dqn(args, logger):
-    network = Agent(args)
+    network = Network(args)
     scores = []
+    high_score = 0
     eps = args.eps_start
     scores_window = deque(maxlen=100)
 
@@ -60,17 +61,16 @@ def dqn(args, logger):
         network.update_beta((step - 1) / (args.max_steps - 1))
 
         predicted_label = network.act(processed_image, eps)
-        next_image, reward, done = env_step(predicted_label, true_label, processed_image)
+        next_image, reward, done = env_step(args, predicted_label, true_label, processed_image)
         
         network.step(processed_image, predicted_label, reward, next_image, done)
         
         scores_window.append(reward)
         scores.append(reward)
 
-        if logger is not None and step % 100 == 0:
+        if logger is not None and step % 1000 == 0:
             avg_score = np.mean(scores_window)
-            logger.log_metrics(step, eps, reward, avg_score)
-            torch.save(network.qnetwork_local.state_dict(), 'checkpoint.pth')
+            logger.log_metrics(eps, avg_score)
             print('\rStep: {}\tEpsilon: {:.2f}\tScore: {:.2f}\tAverage Score: {:.2f}'.format(step, eps, reward, avg_score))
         else:
             print('\rStep: {}\tEpsilon: {:.2f}\tScore: {:.2f}\tAverage Score: {:.2f}'.format(step, eps, reward, np.mean(scores_window)), end="")
@@ -79,6 +79,12 @@ def dqn(args, logger):
             eps -= args.eps_decay
         else:
             eps = args.eps_end
+
+        if np.mean(scores_window) > high_score:
+            high_score = np.mean(scores_window)
+            torch.save(network.qnetwork_local.state_dict(), 'checkpoint.pth')
+        
+    torch.save(network.qnetwork_local.state_dict(), 'checkpoint.pth')
 
     return scores
 
@@ -92,7 +98,8 @@ def main():
 
     if not args.load_policy:
         scores = dqn(args, logger)
-        rename_file('checkpoint.pth', 'learned_policy.pth')
+        policy = move_file('checkpoint.pth', 'learned_policy')
+        args.policy_file = policy
 
     test_scores = test_dqn(args, logger)
 

@@ -5,20 +5,25 @@ import numpy as np
 from PIL import Image
 
 
-def rename_file(current_name, new_name):
-    try:
-        # Check if the file exists in the current directory
-        if os.path.exists(current_name):
-            # Rename the file
-            os.rename(current_name, new_name)
-            print(f"File '{current_name}' has been renamed to '{new_name}'")
-            return True
-        else:
-            print(f"No file named '{current_name}' found in the current directory.")
-            return False
-    except Exception as e:
-        print(f"Error renaming file: {e}")
-        return False
+def move_file(current_name, base_new_name, target_directory="learned_policy"):
+    # Check if the file exists in the current directory
+    if os.path.exists(current_name):
+        # Ensure the target directory exists; if not, create it
+        if not os.path.exists(target_directory):
+            os.makedirs(target_directory)
+
+        # Calculate the next file number based on the number of files in the directory
+        next_file_number = len(os.listdir(target_directory)) + 1
+
+        # Construct the new file name with the number appended
+        new_name = f"{base_new_name}_{next_file_number}.pth"
+
+        # Construct the new file path including the directory
+        new_path = os.path.join(target_directory, new_name)
+
+        # Rename and move the file
+        os.rename(current_name, new_path)
+        return new_path
     
 def get_random_image(image_dir):
     # Define the directory labels
@@ -76,9 +81,11 @@ def preprocess_image(image_path, target_size):
         # Now the shape is [1, target_size, target_size]
         return img_tensor
     
-def env_step(predicted_label, true_label, processed_image):
+def env_step(args, predicted_label, true_label, processed_image):
+    # If correct next_state = processed_image
     if predicted_label == true_label:
-        return processed_image, 5, True
+        return processed_image, args.reward, True
+    # else it is all 0's
     else:
         processed_image[:] = 0
         return processed_image, 0, False
