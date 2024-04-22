@@ -1,108 +1,100 @@
 import torch
 import numpy as np
-
 from args import Args
 from logger import Logger
+from dqn_agent import Agent
 from collections import deque
-from DQN.network import Network
-from utils import get_random_image, preprocess_image
+from utils import get_random_image, preprocess_image, env_step, rename_file
 
 
-def test(args, network, logger):
-    # Load the policy file
-    network.network_local.load_state_dict(torch.load('checkpoint.pth'))
-    network.network_local.eval()
+def test_dqn(args, logger):
+    network = Agent(args)
+    network.qnetwork_local.load_state_dict(torch.load('learned_policy.pth'))
 
-    num_test_images = 0
-    correct_predictions = 0
-
-    for _ in range(num_test_images):
-        # Get a random test image and its label
-        image, true_label = get_random_image()
-
-        # Preprocess the image
-        processed_image = preprocess_image(image)
-
-        # Send the image to the network for prediction
-        predicted_label = network.predict(processed_image)
-
-        if predicted_label == true_label:
-            correct_predictions += 1
-
-    accuracy = correct_predictions / num_test_images
-    print(f'Test Accuracy: {accuracy:.2f}')
-    if logger: logger.log_test_metrics(accuracy)
-
-def train(args, network, logger):
-    eps = args.eps_start
-    correct_predictions = 0
-    total_loss = 0
-    total_accuracy = 0
-    total_magnitude = 0
-    recent_accuracy = deque(maxlen=50)
-
-    torch.set_printoptions(threshold=10_000)
-    for step in range(1, args.max_steps + 1):
-        # Get an image and its label at random
-        image, true_label = get_random_image(args.image_dir)
-        # print(image, true_label)
+    scores_window = deque(maxlen=100)
+    scores = []
+    eps = 0
+    
+    for step in range(1, args.test_steps + 1):
+        reward = 0
+        # Get an image path and its label at random
+        image_path, true_label = get_random_image(args.image_dir)
         
-        # Preprocess the image
-        processed_image = preprocess_image(image, args.image_w, args.image_h)
-        print(processed_image.shape)
+        # Process the image
+        processed_image = preprocess_image(image_path, args.image_h)
+        processed_image = torch.flatten(processed_image)
+        
+        predicted_label = network.act(processed_image, eps)
+        next_image, reward, done = env_step(predicted_label, true_label, processed_image)
+        
+        scores_window.append(reward)
+        scores.append(reward)
+        
+        print('Step: {}\tScore: {:.2f}\tAverage Score: {:.2f}'.format(step, reward, np.mean(scores_window)))
 
+    # Calculate correct and incorrect predictions
+    correct = scores.count(5)
+    incorrect = scores.count(0)
+
+    # Print the results
+    print(f'Number of correct labels: {correct}')
+    print(f'Number of incorrect labels: {incorrect}')
+
+    return scores
+
+def dqn(args, logger):
+    network = Agent(args)
+    scores = []
+    eps = args.eps_start
+    scores_window = deque(maxlen=100)
+
+    for step in range(1, args.max_steps + 1):
+        reward = 0
+        # Get an image path and its label at random
+        image_path, true_label = get_random_image(args.image_dir)
+        
+        # Process the image
+        processed_image = preprocess_image(image_path, args.image_h)
+        processed_image = torch.flatten(processed_image)
+        
         network.update_beta((step - 1) / (args.max_steps - 1))
 
-        # Send the image to the network
-        predicted_label = network.predict(processed_image, eps)
+        predicted_label = network.act(processed_image, eps)
+        next_image, reward, done = env_step(predicted_label, true_label, processed_image)
+        
+        network.step(processed_image, predicted_label, reward, next_image, done)
+        
+        scores_window.append(reward)
+        scores.append(reward)
 
-        # Train the network and record metrics
-        loss, accuracy, magnitude, lr = network.step(processed_image, true_label)
+        if logger is not None and step % 100 == 0:
+            avg_score = np.mean(scores_window)
+            logger.log_metrics(step, eps, reward, avg_score)
+            torch.save(network.qnetwork_local.state_dict(), 'checkpoint.pth')
+            print('\rStep: {}\tEpsilon: {:.2f}\tScore: {:.2f}\tAverage Score: {:.2f}'.format(step, eps, reward, avg_score))
+        else:
+            print('\rStep: {}\tEpsilon: {:.2f}\tScore: {:.2f}\tAverage Score: {:.2f}'.format(step, eps, reward, np.mean(scores_window)), end="")
 
-        total_loss += loss
-        total_accuracy += accuracy
-        total_magnitude += magnitude
-        if predicted_label == true_label:
-            correct_predictions += 1
+        if eps > args.eps_end:
+            eps -= args.eps_decay
+        else:
+            eps = args.eps_end
 
-        if eps > args.eps_end: eps -= args.eps_decay
-        else: eps = args.eps_end
-
-        if step % args.BATCH_SIZE == 0:
-            batch_accuracy = correct_predictions / args.BATCH_SIZE
-            recent_accuracy.append(batch_accuracy)
-            avg_accuracy = np.mean(recent_accuracy)
-            avg_loss = total_loss / args.BATCH_SIZE
-            avg_magnitude = total_magnitude / args.BATCH_SIZE
-
-            if logger: logger.log_metrics(step, eps, avg_accuracy, avg_loss, avg_magnitude, lr, args.prio_a, args.prio_b)
-            
-            print(f'\rStep: {step}\tEpsilon: {eps:.2f}\tBatch Accuracy: {batch_accuracy:.2f}\tAvg. Accuracy: {avg_accuracy:.2f}\tAvg. Loss: {avg_loss:.4f}\tAvg. Gradient Magnitude: {avg_magnitude:.4f}\tLearning Rate: {lr:.6f}', end='')
-            if step % (args.BATCH_SIZE * 100) == 0:
-                print(f'\rStep: {step}\tEpsilon: {eps:.2f}\tBatch Accuracy: {batch_accuracy:.2f}\tAvg. Accuracy: {avg_accuracy:.2f}\tAvg. Loss: {avg_loss:.4f}\tAvg. Gradient Magnitude: {avg_magnitude:.4f}\tLearning Rate: {lr:.6f}')
-                torch.save(args.network_local.state_dict(), 'checkpoint.pth')
-
-            correct_predictions = 0
-            total_loss = 0
-            total_accuracy = 0
-            total_magnitude = 0
-
-    torch.save(network.network_local.state_dict(), 'checkpoint.pth')
-    return recent_accuracy
+    return scores
 
 def main():
     args = Args()
-    
-    network = Network(args)
+
     if args.wandb: 
         logger = Logger(args)
     else: 
         logger = None
 
     if not args.load_policy:
-        _ = train(args, network, logger)
-    if args.load_policy:
-        _ = test(args, network, logger)
+        scores = dqn(args, logger)
+        rename_file('checkpoint.pth', 'learned_policy.pth')
+
+    test_scores = test_dqn(args, logger)
 
     if args.wandb: logger.close()
 

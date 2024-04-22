@@ -22,11 +22,7 @@ class Network():
         self.LR = args.LR
         self.UPDATE_EVERY = args.UPDATE_EVERY
         self.priority_replay = args.priority_replay
-
-        if self.priority_replay:
-            self.prio_e, self.prio_a, self.prio_b = args.priority_replay
-        else:
-            self.prio_e, self.prio_a, self.prio_b = None, None, None
+        self.prio_e, self.prio_a, self.prio_b = args.priority_replay
 
         # Q-Network
         self.network_local = Model(args.num_labels).to(device)
@@ -37,23 +33,21 @@ class Network():
         self.memory = ReplayBuffer(args.num_labels, args.BUFFER_SIZE, args.BATCH_SIZE, args.seed, self.priority_replay)
         self.t_step = 0
     
-    def step(self, image, label):
+    def step(self, image, label, reward):
         # Save experience in replay memory
-        self.memory.add(image, label)
-        
+        self.memory.add(image, label, reward)
+
         # Learn every UPDATE_EVERY time steps
         self.t_step = (self.t_step + 1) % self.UPDATE_EVERY
-        if self.t_step == 0:
-            # If enough samples are available in memory, get random subset and learn
-            if len(self.memory) > self.BATCH_SIZE:
-                experiences = self.memory.sample()
+        if self.t_step == 0 and len(self.memory) > self.BATCH_SIZE:
+            experiences = self.memory.sample()
+            if experiences:  # Ensure experiences were actually retrieved
                 loss, accuracy, magnitude, lr = self.learn(experiences)
-        else:
-            loss, accuracy, magnitude, lr = None, None, None, None
-        return loss, accuracy, magnitude, lr
+                return loss, accuracy, magnitude, lr
+        return None, None, None, None
    
     def predict(self, image, eps=0):
-        image = torch.from_numpy(image).float().unsqueeze(0).to(device)
+        image = image.unsqueeze(0).to(device)
         self.network_local.eval()
         with torch.no_grad():
             outputs = self.network_local(image)
@@ -61,45 +55,42 @@ class Network():
 
         # Epsilon-greedy label selection
         if random.random() > eps:
-            predicted_label = np.argmax(outputs.cpu().data.numpy())
+            _, predicted_label = torch.max(outputs, 1)
+            predicted_label = predicted_label.item()
         else:
-            predicted_label = random.choice(range(self.num_labels))
-        
+            predicted_label = random.choice(range(self.num_labels))      
         return predicted_label
 
     def learn(self, experiences):
-        if self.priority_replay:
-            experiences, experience_indexes, priorities = experiences
-            importance_weights = (len(self.memory) * priorities) ** (-self.prio_b)
-            importance_weights /= importance_weights.max()
-            importance_weights = importance_weights.to(device)
-        else:
-            experiences = experiences
+        experiences, experience_indexes, priorities = experiences
+        importance_weights = (len(self.memory) * priorities) ** (-self.prio_b)
+        importance_weights /= importance_weights.max()
+        importance_weights = importance_weights.unsqueeze(1).to(device)
 
-        images, labels = experiences
+        images, labels, rewards = experiences
 
         # Forward pass
         outputs = self.network_local(images)
 
         # Compute loss
-        criterion = nn.CrossEntropyLoss(reduction='none')
-        loss = criterion(outputs, labels)
+        criterion = nn.BCEWithLogitsLoss(reduction='none')
+        loss = criterion(outputs, labels.float())
 
-        if self.priority_replay:
-            # Apply importance weights to the loss
-            loss = torch.mean(loss * importance_weights)
-        else:
-            loss = torch.mean(loss)
+        # Reshape importance_weights to match the dimensions of loss
+        importance_weights = importance_weights.expand_as(loss)
+        loss = torch.mean(loss * importance_weights)
 
         # Backward pass and optimization
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
-        if self.priority_replay:
-            # Calculate priorities and update them
-            target_priorities = loss.detach().cpu().numpy() + self.prio_e
-            self.memory.update_priorities(experience_indexes, target_priorities)
+        # Calculate priorities and update them
+        target_priorities = loss.detach().cpu().numpy()
+        if target_priorities.ndim == 0:
+            target_priorities = np.array([target_priorities])
+        target_priorities += self.prio_e
+        self.memory.update_priorities(experience_indexes, target_priorities)
 
         # Update target network
         self.soft_update(self.network_local, self.network_target, self.TAU)
@@ -130,47 +121,33 @@ class ReplayBuffer:
         self.num_labels = num_labels
         self.memory = deque(maxlen=buffer_size)  
         self.batch_size = batch_size
-        self.experience = namedtuple("Experience", field_names=["image", "label"])
+        self.experience = namedtuple("Experience", field_names=["image", "label", "reward"])
         self.seed = random.seed(seed)
         self.priority_replay = priority_replay
-
-        if self.priority_replay:
-            self.priorities = deque(maxlen=buffer_size)
-            self.prio_e, self.prio_a, self.prio_b = priority_replay
-        else:
-            self.priorities = None
-            self.prio_e, self.prio_a, self.prio_b = None, None, None
+        self.priorities = deque(maxlen=buffer_size)
+        self.prio_e, self.prio_a, self.prio_b = priority_replay
     
-    def add(self, image, label):
-        e = self.experience(image, label)
+    def add(self, image, label, reward):
+        e = self.experience(image, label, reward)
         self.memory.append(e)
-        if self.priority_replay:
-            self.priorities.append(self.prio_e)
+        self.priorities.append(self.prio_e)
         
     def update_priorities(self, priority_indexes, priority_targets):
-        if self.priority_replay:
-            for index, priority_index in enumerate(priority_indexes):
-                self.priorities[priority_index] = priority_targets[index]
+        for index, priority_index in enumerate(priority_indexes):
+            self.priorities[priority_index] = priority_targets[index]
     
     def sample(self):
-        if self.priority_replay:
-            adjusted_priorities = np.array(self.priorities)**self.prio_a
-            sampling_probabilities = adjusted_priorities/sum(adjusted_priorities)
-            experience_indexes = np.random.choice(len(self.memory), size=self.batch_size, replace=False, p=sampling_probabilities)
-            experiences = [self.memory[index] for index in experience_indexes]
-            priorities = torch.from_numpy(np.array([self.priorities[index] for index in experience_indexes])).float().to(device)
-        else:
-            experiences = random.sample(self.memory, k=self.batch_size)
-            experience_indexes = None
-            priorities = None
+        adjusted_priorities = np.array(self.priorities)**self.prio_a
+        sampling_probabilities = adjusted_priorities/sum(adjusted_priorities)
+        experience_indexes = np.random.choice(len(self.memory), size=self.batch_size, replace=False, p=sampling_probabilities)
+        experiences = [self.memory[index] for index in experience_indexes]
+        priorities = torch.from_numpy(np.array([self.priorities[index] for index in experience_indexes])).float().to(device)
 
-        images = torch.from_numpy(np.vstack([e.image for e in experiences if e is not None])).float().to(device)
-        labels = torch.from_numpy(np.vstack([e.label for e in experiences if e is not None])).long().to(device)
+        images = torch.stack([e.image for e in experiences if e is not None]).to(device)
+        labels = torch.stack([e.label for e in experiences if e is not None]).to(device)
+        rewards = torch.tensor([e.reward for e in experiences if e is not None], dtype=torch.float32).to(device)
   
-        if self.priority_replay:
-            return (images, labels), experience_indexes, priorities
-        else:
-            return (images, labels), None, None
+        return (images, labels, rewards), experience_indexes, priorities
 
     def __len__(self):
         return len(self.memory)
