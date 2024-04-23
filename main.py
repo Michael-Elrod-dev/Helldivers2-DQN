@@ -1,12 +1,13 @@
 import time
 import torch
 import pyautogui
+import pydirectinput
 import numpy as np
 from args import Args
 from logger import Logger
 from network import Network
 from collections import deque
-from utils import get_random_image, preprocess_image, env_step, move_file
+from utils import *
 
 
 def test_dqn(images):
@@ -28,21 +29,23 @@ def test_dqn(images):
         processed_image = torch.flatten(processed_image)
         
         predicted_label = network.act(processed_image, eps)
-        print(predicted_label)
 
         # Convert the predicted label to the corresponding key press action
         if predicted_label == 0:
-            print("here")
-            pyautogui.press('a')  # Left
+            print("Left")
+            APress()
         elif predicted_label == 1:
-            pyautogui.press('d')  # Right
+            print("Right")
+            DPress()
         elif predicted_label == 2:
-            pyautogui.press('w')  # Up
+            print("Up")
+            WPress()
         elif predicted_label == 3:
-            pyautogui.press('s')  # Down
+            print("Down")
+            SPress()
 
         # Add a short delay after each key press action
-        time.sleep(0.2)
+        # time.sleep(0.2)
 
 
         # next_image, reward, done = env_step(args, predicted_label, -1, processed_image)
