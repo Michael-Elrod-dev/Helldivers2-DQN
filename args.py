@@ -12,7 +12,7 @@ class Args():
         # Model Training Settings
         self.seed = 0                    # Random seed
         self.reward = 10                 # Reward for correct prediction
-        self.max_steps = 1000000         # Maximum number of training steps
+        self.max_steps = 500000          # Maximum number of training steps
         self.test_steps = 100            # Number of steps to evaluate the model
         self.num_labels = 4              # Number of different labels in the dataset
         self.Double_DQN = True           # Whether to use Double-DQN
@@ -26,11 +26,11 @@ class Args():
         
         # Environment and Image Settings
         self.image_dir = 'ImageProcessing/TestingData/Filtered/'  # Directory containing images
-        self.policy_file = 'learned_policy_1.pth'
+        self.policy_file = 'learned_policy_3.pth'
         self.image_w = 25                # Image width after processing
         self.image_h = 25                # Image height after processing
         self.image_size = self.image_w * self.image_h  # Image size for processing
         
         # Miscellaneous Settings
-        self.wandb = True                # Whether to log to Weights & Biases
-        self.load_policy = False         # Whether to load a saved policy
+        self.wandb = False                # Whether to log to Weights & Biases
+        self.load_policy = True         # Whether to load a saved policy

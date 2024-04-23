@@ -21,7 +21,7 @@ def test_dqn(args, logger):
         image_path, true_label = get_random_image(args.image_dir)
         
         # Process the image
-        processed_image = preprocess_image(image_path, args.image_h)
+        processed_image = preprocess_image(image_path, args.image_h, False)
         processed_image = torch.flatten(processed_image)
         
         predicted_label = network.act(processed_image, eps)
@@ -33,7 +33,7 @@ def test_dqn(args, logger):
         print('Step: {}\tScore: {:.1f}\tAverage Score: {:.2f}'.format(step, reward, np.mean(scores_window)))
 
     # Calculate correct and incorrect predictions
-    correct = scores.count(5)
+    correct = scores.count(10)
     incorrect = scores.count(0)
 
     # Print the results
@@ -55,14 +55,14 @@ def dqn(args, logger):
         image_path, true_label = get_random_image(args.image_dir)
         
         # Process the image
-        processed_image = preprocess_image(image_path, args.image_h)
+        processed_image = preprocess_image(image_path, args.image_h, False)
         processed_image = torch.flatten(processed_image)
-        
+
         network.update_beta((step - 1) / (args.max_steps - 1))
 
+        # Send to and update the network
         predicted_label = network.act(processed_image, eps)
         next_image, reward, done = env_step(args, predicted_label, true_label, processed_image)
-        
         network.step(processed_image, predicted_label, reward, next_image, done)
         
         scores_window.append(reward)

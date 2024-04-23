@@ -57,7 +57,7 @@ def calculate_eps_decay(eps_start, eps_end, n_steps, eps_percentage):
     decrement_per_step = (eps_start - eps_end) / effective_steps
     return decrement_per_step
 
-def preprocess_image(image_path, target_size):
+def preprocess_image(image_path, target_size, binary):
     # Open the image file
     with Image.open(image_path) as img:
         # Convert image to grayscale
@@ -68,6 +68,9 @@ def preprocess_image(image_path, target_size):
         
         # Convert the PIL image to a numpy array
         img_array = np.array(img)
+
+        # Apply a threshold to convert the image to binary (black and white)
+        if binary: img_array = np.where(img_array > 128, 255, 0)
         
         # Convert the numpy array to a tensor, ensure the data type is float for normalization
         img_tensor = torch.from_numpy(img_array).float()
