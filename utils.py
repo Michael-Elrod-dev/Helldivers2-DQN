@@ -1,4 +1,5 @@
 import os
+import cv2
 import torch
 import random
 import numpy as np
@@ -57,32 +58,34 @@ def calculate_eps_decay(eps_start, eps_end, n_steps, eps_percentage):
     decrement_per_step = (eps_start - eps_end) / effective_steps
     return decrement_per_step
 
-def preprocess_image(image_path, target_size, binary):
-    # Open the image file
-    with Image.open(image_path) as img:
-        # Convert image to grayscale
-        img = img.convert("L")
-        
-        # Resize the image to the target size using the LANCZOS resampling method
-        img = img.resize((target_size, target_size), Image.Resampling.LANCZOS)
-        
-        # Convert the PIL image to a numpy array
-        img_array = np.array(img)
-
-        # Apply a threshold to convert the image to binary (black and white)
-        if binary: img_array = np.where(img_array > 128, 255, 0)
-        
-        # Convert the numpy array to a tensor, ensure the data type is float for normalization
-        img_tensor = torch.from_numpy(img_array).float()
-        
-        # Normalize the image tensor to 0-1 by dividing by 255
-        img_tensor /= 255.0
-        
-        # Add a channel dimension: (H, W) -> (1, H, W)
-        img_tensor = img_tensor.unsqueeze(0)
-        
-        # Now the shape is [1, target_size, target_size]
-        return img_tensor
+def preprocess_image(image, target_size, binary):
+    # Convert the OpenCV image to a PIL image
+    img = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    
+    # Convert image to grayscale
+    img = img.convert("L")
+    
+    # Resize the image to the target size using the LANCZOS resampling method
+    img = img.resize((target_size, target_size), Image.Resampling.LANCZOS)
+    
+    # Convert the PIL image to a numpy array
+    img_array = np.array(img)
+    
+    # Apply a threshold to convert the image to binary (black and white) if specified
+    if binary:
+        img_array = np.where(img_array > 128, 255, 0)
+    
+    # Convert the numpy array to a tensor, ensure the data type is float for normalization
+    img_tensor = torch.from_numpy(img_array).float()
+    
+    # Normalize the image tensor to 0-1 by dividing by 255
+    img_tensor /= 255.0
+    
+    # Add a channel dimension: (H, W) -> (1, H, W)
+    img_tensor = img_tensor.unsqueeze(0)
+    
+    # Now the shape is [1, target_size, target_size]
+    return img_tensor
     
 def env_step(args, predicted_label, true_label, processed_image):
     # If correct next_state = processed_image
