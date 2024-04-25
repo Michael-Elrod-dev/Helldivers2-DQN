@@ -3,7 +3,7 @@ import wandb
 
 class Logger:
     def __init__(self, args):
-        wandb.init(project='Helldivers2 DQN', entity='elrod-michael95')
+        wandb.init(project='XXXXXXX', entity='XXXXXXX')
         wandb.config.update({
             "num_labels": args.num_labels,
             "image_size": args.image_size,
