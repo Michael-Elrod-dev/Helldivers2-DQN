@@ -1,11 +1,12 @@
 # Helldivers 2 V.S. Deep Q-Networks (DQN)
 
-This project implements an image classification system using Deep Q-Networks (DQN) with prioritized experience replay. The goal is to train a convolutional neural network (CNN) to classify images into one of four categories: left, right, up, or down and then convert those classifications into in-game actions.
+This project implements an image classification system using Deep Q-Networks (DQN) with prioritized experience replay. The goal is to train a convolutional neural network to classify images into one of four categories: left, right, up, or down and then convert those classifications into in-game actions.
 
 ## Project Structure
 
 The project consists of the following files:
-- `main.py`: The main script that orchestrates the training and testing process.
+- `train.py`: The main script that orchestrates the training and testing process.
+- `args.py`: List of settings for the model and environment
 - `model.py`: Defines the CNN architecture used for image classification.
 - `network.py`: Implements the DQN algorithm with prioritized experience replay.
 - `logger.py`: Handles logging of training and testing metrics using Weights and Biases (wandb).
@@ -45,35 +46,3 @@ pip install torch numpy opencv-python wandb pyautogui screeninfo pillow
    python main.py
    ```
    The testing process will load the trained model from `checkpoint.pth` and evaluate its performance on a set of test images.
-
-## Model Architecture
-
-The CNN architecture used for image classification consists of the following layers:
-- Convolutional layer 1: 3 input channels, 16 output channels, 5x5 kernel, stride 2
-- Convolutional layer 2: 16 input channels, 32 output channels, 5x5 kernel, stride 2
-- Convolutional layer 3: 32 input channels, 32 output channels, 5x5 kernel, stride 2
-- Fully connected layer 1: 800 input units, 256 output units
-- Fully connected layer 2: 256 input units, 4 output units (corresponding to the four categories)
-
-## Deep Q-Networks (DQN)
-
-The DQN algorithm is used to train the CNN for image classification. The key components of the DQN implementation include:
-- Replay Buffer: Stores the experience tuples (image, label) for training.
-- Prioritized Experience Replay: Assigns higher priorities to experiences with larger temporal-difference errors.
-- Epsilon-Greedy Exploration: Balances exploration and exploitation during training.
-- Target Network: Stabilizes the training process by providing target Q-values.
-
-## Logging and Visualization
-
-The project uses Weights and Biases (wandb) for logging and visualizing the training and testing metrics. The logged metrics include:
-- Average Accuracy: The average accuracy over the last 50 batches.
-- Average Loss: The average loss for the current batch.
-- Average Gradient Magnitude: The average magnitude of gradients for the current batch.
-- Learning Rate: The current learning rate.
-- Priority Alpha and Beta: The parameters for prioritized experience replay.
-
-## Image Preprocessing
-
-The `separator.py` file contains functions for image processing and separating relevant game elements from screenshots:
-- `crop_area`: Detects bright yellow objects in the central region of the image, calculates a bounding box around the two largest yellow objects, and crops the image accordingly.
-- `separate`: Separates the individual images within the cropped area based on contour detection and stores them in a list.
