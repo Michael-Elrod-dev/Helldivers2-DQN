@@ -1,5 +1,3 @@
-Here's the completed README for your project:
-
 # Helldivers 2 V.S. Deep Q-Networks (DQN)
 
 This project implements an image classification system using Deep Q-Networks (DQN) with prioritized experience replay. The goal is to train a convolutional neural network (CNN) to classify images into one of four categories: left, right, up, or down and then convert those classifications into in-game actions.
