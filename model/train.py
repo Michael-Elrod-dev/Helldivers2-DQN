@@ -2,10 +2,9 @@ import torch
 import torch.optim as optim
 import numpy as np
 from args import Args
-from logger import Logger
 from network import Network
 from collections import deque
-from utils import *
+from utils.utils import *
 
 device = torch.device("cuda:0")
 

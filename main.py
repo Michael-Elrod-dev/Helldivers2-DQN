@@ -1,9 +1,8 @@
-import separator
-import screengrab as sg
+import utils.screengrab as sg
 import keyboard
-from train import test, train_classifier
-from args import Args
-from logger import Logger
+from model.train import test, train_classifier
+from model.args import Args
+from utils.logger import Logger
 import numpy as np
 import os
 import cv2
