@@ -4,6 +4,9 @@ wandb/
 __pycache__/
 *.py[cod]
 *$py.class
+ImageProcessing/
+TestingData/
+*.png
 
 # C extensions
 *.so
