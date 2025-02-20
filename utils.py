@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image
 
 
-def move_file(current_name, base_new_name, target_directory="learned_policy"):
+def move_file(current_name, base_new_name, target_directory):
     # Check if the file exists in the current directory
     if os.path.exists(current_name):
         # Ensure the target directory exists; if not, create it

@@ -5,28 +5,44 @@ import torch.nn.functional as F
 class QNetwork(nn.Module):
     def __init__(self, image_size, num_labels, seed):
         super(QNetwork, self).__init__()
-        # input
         self.seed = torch.manual_seed(seed)
-        self.fc1 = nn.Linear(image_size, 64)
-        # advantage
-        self.ad1 = nn.Linear(64, 32)
-        self.ad2 = nn.Linear(32, num_labels)
-        # value
-        self.va1 = nn.Linear(64, 32)
-        self.va2 = nn.Linear(32, 1)
+        
+        # Convolutional layers
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(32)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+        self.bn3 = nn.BatchNorm2d(128)
+        
+        # Calculate the size after convolutions and pooling
+        self.pool = nn.MaxPool2d(2, 2)
+        conv_output_size = 128 * 3 * 3  # This will need to be adjusted based on your input size
+        
+        # Fully connected layers
+        self.fc1 = nn.Linear(conv_output_size, 256)
+        self.fc2 = nn.Linear(256, num_labels)
+        
+        self.dropout = nn.Dropout(0.5)
 
     def forward(self, image):
-        # input
-        linear_1 = F.relu(self.fc1(image))
-        # advantage
-        advantage_1 = F.relu(self.ad1(linear_1))
-        label_advantage = self.ad2(advantage_1)
-        # value
-        value_1 = F.relu(self.va1(linear_1))
-        image_value = self.va2(value_1)
-        # combining
-        max_label_advantage = torch.max(label_advantage, dim=1)[0].unsqueeze(1)
-        value_image_label = image_value + label_advantage - max_label_advantage 
+        # Reshape the input to add channel dimension if it's not present
+        if len(image.shape) == 2:
+            image = image.unsqueeze(0)  # Add batch dimension
+        if len(image.shape) == 3:
+            image = image.unsqueeze(1)  # Add channel dimension
+            
+        # Convolutional layers
+        x = self.pool(F.relu(self.bn1(self.conv1(image))))
+        x = self.pool(F.relu(self.bn2(self.conv2(x))))
+        x = self.pool(F.relu(self.bn3(self.conv3(x))))
         
-        return value_image_label
-    
+        # Flatten
+        x = x.view(x.size(0), -1)
+        
+        # Fully connected layers
+        x = F.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = self.fc2(x)
+        
+        return x

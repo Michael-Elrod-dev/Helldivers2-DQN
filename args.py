@@ -3,34 +3,36 @@ from utils import calculate_eps_decay
 class Args():
     def __init__(self):
         # Network Hyperparameters
-        self.BUFFER_SIZE = int(1e5)      # Replay buffer size
-        self.BATCH_SIZE = 50             # Minibatch size
-        self.TAU = 1e-3                  # Soft update coefficient for target parameters
-        self.LR = 5e-4                   # Learning rate
-        self.UPDATE_EVERY = 2            # Network update frequency
+        self.BATCH_SIZE = 32             # Reduced batch size for initial training
+        self.LR = 0.0001                 # Reduced learning rate for more stable training
         
         # Model Training Settings
         self.seed = 0                    # Random seed
-        self.reward = 10                 # Reward for correct prediction
-        self.max_steps = 500000          # Maximum number of training steps
-        self.test_steps = 100            # Number of steps to evaluate the model
-        self.num_labels = 4              # Number of different labels in the dataset
-        self.Double_DQN = True           # Whether to use Double-DQN
-        self.priority_replay = [0.5, 0.5, 0.5]  # Priorities for replay buffer
-
-        # Exploration Settings
-        self.eps_start = 1.0             # Starting value of epsilon for epsilon-greedy action selection
-        self.eps_end = 0.01              # Minimum value of epsilon
-        self.eps_percentage = 0.98       # Percentage of max_steps over which to decay epsilon
-        self.eps_decay = calculate_eps_decay(self.eps_start, self.eps_end, self.max_steps, self.eps_percentage)
+        self.max_steps = 100000          # Maximum number of training steps
+        self.num_labels = 4              # Number of different labels (up, down, left, right)
+        
+        # Training Parameters
+        self.early_stopping_patience = 10  # Number of epochs to wait before early stopping
+        self.validation_split = 0.2       # Portion of data to use for validation
+        self.min_lr = 1e-6               # Minimum learning rate for scheduler
+        self.lr_patience = 5             # Patience for learning rate scheduler
+        self.lr_factor = 0.5             # Factor to reduce learning rate by
         
         # Environment and Image Settings
-        self.image_dir = 'ImageProcessing/TestingData/Filtered/'  # Directory containing images
-        self.policy_file = 'learned_policy_3.pth'
+        self.image_dir = 'TestingData/Filtered/'  # Directory containing images
+        self.policy_file = 'best_model.pth'       # Where to save the best model
         self.image_w = 25                # Image width after processing
         self.image_h = 25                # Image height after processing
-        self.image_size = self.image_w * self.image_h  # Image size for processing
+        self.image_size = self.image_w * self.image_h  # Total image size
+        
+        # Model Architecture Settings
+        self.conv_channels = [32, 64, 128]  # Number of channels in each conv layer
+        self.fc_units = [256, 128]          # Number of units in fully connected layers
+        self.dropout_rate = 0.5             # Dropout rate
+        self.use_batch_norm = True          # Whether to use batch normalization
         
         # Miscellaneous Settings
-        self.wandb = False                # Whether to log to Weights & Biases
-        self.load_policy = True         # Whether to load a saved policy
+        self.wandb = True                # Enable wandb logging
+        self.save_best = True            # Whether to save best model during training
+        self.checkpoint_freq = 1000      # How often to save checkpoints
+        self.model_save_dir = 'models/'  # Directory to save models

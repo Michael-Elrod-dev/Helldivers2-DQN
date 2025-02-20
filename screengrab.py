@@ -1,19 +1,14 @@
 import pyautogui
 from screeninfo import get_monitors
 
-def take_screenshot(monitor_index=0):
-    # Get information about all connected monitors
+def take_screenshot(region_width=600, region_height=120, x_offset=250, y_offset=0):
     monitors = get_monitors()
-
-    # Check if the specified monitor index is valid
-    if monitor_index >= len(monitors):
-        raise ValueError("Invalid monitor index")
-
-    # Select the monitor
-    monitor = monitors[monitor_index]
-
-    # Take a screenshot of the specified monitor
-    screenshot = pyautogui.screenshot(region=(monitor.x, monitor.y, monitor.width, monitor.height))
-
-    # Save the screenshot to a file
-    screenshot.save('screen.png')
+    monitor = monitors[0]
+    
+    center_x = monitor.width//2
+    center_y = monitor.height//2
+    
+    x = center_x - region_width//2 + x_offset + monitor.x
+    y = center_y - region_height//2 + y_offset + monitor.y
+    
+    return pyautogui.screenshot(region=(x, y, region_width, region_height))
